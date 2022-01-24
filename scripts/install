@@ -6,7 +6,7 @@
 # IMPORT GENERIC HELPERS
 #=================================================
 
-source _common.sh
+# source _common.sh
 source /usr/share/yunohost/helpers
 
 #=================================================
@@ -44,6 +44,7 @@ app=$YNH_APP_INSTANCE_NAME
 #=================================================
 # CHECK IF THE APP CAN BE INSTALLED WITH THESE ARGS
 #=================================================
+ynh_script_progression --message="Validating installation parameters..."
 
 ### If the app uses nginx as web server (written in HTML/PHP in most cases), the final path should be "/var/www/$app".
 ### If the app provides an internal web server (or uses another application server such as uwsgi), the final path should be "/opt/yunohost/$app"
@@ -51,16 +52,17 @@ final_path=/opt/yunohost/$app
 test ! -e "$final_path" || ynh_die "This path already contains a folder"
 
 # Normalize the url path syntax
-path_url=$(ynh_normalize_url_path "$path_url")
+path_url=$(ynh_normalize_url_path --path_url="$path_url")
 
 # Check web path availability
-ynh_webpath_available "$domain" "$path_url"
+ynh_webpath_available --domain="$domain" --path_url="$path_url"
 # Register (book) web path
-ynh_webpath_register "$app" "$domain" "$path_url"
+ynh_webpath_register --app=$app --domain=$domain --path_url=$path_url
 
 #=================================================
 # STORE SETTINGS FROM MANIFEST
 #=================================================
+ynh_script_progression --message="Storing installation settings..."
 
 ynh_app_setting_set "$app" domain "$domain"
 ynh_app_setting_set "$app" path "$path_url"
@@ -70,28 +72,32 @@ ynh_app_setting_set "$app" is_public "$is_public"
 # FIND AND OPEN A PORT
 #=================================================
 
+ynh_script_progression --message="Finding an available port..."
+
 ### Use these lines if you have to open a port for the application
 ### `ynh_find_port` will find the first available port starting from the given port.
 ### If you're not using these lines:
 ###		- Remove the section "CLOSE A PORT" in the remove script
 
 # Find a free port
-port=$(ynh_find_port 8096)
+port=$(ynh_find_port 9000)
 # Open this port
-yunohost firewall allow --no-upnp TCP "$port" 2>&1
-ynh_app_setting_set "$app" port "$port"
+# yunohost firewall allow --no-upnp TCP "$port" 2>&1
+ynh_app_setting_set --app=$app --key=port --value=$port
 
 #=================================================
 # DOWNLOAD, CHECK AND UNPACK SOURCE
 #=================================================
 
-ynh_app_setting_set "$app" final_path "$final_path"
+ynh_script_progression --message="Setting up source files..."
+
+ynh_app_setting_set --app=$app --key=final_path --value=$final_path
 
 # Download, check integrity, uncompress and patch the source from app-[arch].src
 case $(uname -m) in
-    x86_64) ynh_setup_source "$final_path" "app-amd64" ;;
-    aarch64) ynh_setup_source "$final_path" "app-arm64" ;;
-    armv7l) ynh_setup_source "$final_path" "app-armhf" ;;
+    x86_64) ynh_setup_source --dest_dir="$final_path" "app-amd64" ;;
+    aarch64) ynh_setup_source --dest_dir="$final_path" "app-arm64" ;;
+    armv7l) ynh_setup_source --dest_dir="$final_path" "app-armhf" ;;
     *) ynh_die "Unknown arch" ;;
 esac
 
@@ -99,11 +105,15 @@ esac
 # INSTALL EMBY
 #==============================================
 
+ynh_script_progression --message="Installing DEB..."
+
 dpkg --install  "$final_path"/emby-server.deb
 
 #=================================================
 # NGINX CONFIGURATION
 #=================================================
+
+ynh_script_progression --message="Configuring NGINX web server..."
 
 # Create a dedicated nginx config
 ynh_add_nginx_config
@@ -111,6 +121,9 @@ ynh_add_nginx_config
 #=================================================
 # CREATE DEDICATED USER
 #=================================================
+
+ynh_script_progression --message="Creating dedicated user.."
+
 
 # Create a system user
 ynh_system_user_create "$app"
