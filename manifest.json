@@ -14,13 +14,11 @@
         "email": "liberodark@gmail.com"
     },
     "requirements": {
-        "yunohost": ">= 2.7.2"
+        "yunohost": ">= 3.0.0"
     },
     "multi_instance": false,
     "services": [
-        "nginx",
-        "php-fpm",
-        "mysql"
+        "nginx"
     ],
     "arguments": {
         "install": [{
